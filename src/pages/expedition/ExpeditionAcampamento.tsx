@@ -300,7 +300,7 @@ export function ExpeditionAcampamento() {
                                     </button>
 
                                     <div className={`flex-1 flex flex-col md:flex-row md:items-center min-w-0 ${canEdit ? 'cursor-pointer' : ''}`} onClick={() => { if (canEdit) toggleChecklistItem(item.id) }}>
-                                        <span className={`font-medium truncate min-h-[1.5rem] flex-1 ${item.isChecked ? 'line-through text-stone-500' : 'text-stone-800'}`}>
+                                        <span className={`font-medium break-words w-full md:flex-1 ${item.isChecked ? 'line-through text-stone-500' : 'text-stone-800'}`}>
                                             {item.name}
                                         </span>
 
