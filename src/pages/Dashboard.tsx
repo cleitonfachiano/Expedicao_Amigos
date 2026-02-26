@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+
 import { Modal } from '../components/ui/Modal';
 import { Input, Button } from '../components/ui/forms';
 
@@ -71,7 +71,7 @@ export function Dashboard() {
                             <p className="text-sm text-stone-600 mb-1 flex-1">📍 {exp.location || 'Local não definido'}</p>
 
                             <div className="text-sm text-stone-500 mb-4 bg-stone-50 p-2 rounded inline-block w-fit">
-                                📅 {exp.startDate ? format(parseISO(exp.startDate), "dd 'de' MMM", { locale: ptBR }) : '?'} até {exp.endDate ? format(parseISO(exp.endDate), "dd 'de' MMM", { locale: ptBR }) : '?'}
+                                📅 {exp.startDate ? format(parseISO(exp.startDate), 'dd-MM-yyyy') : '?'} até {exp.endDate ? format(parseISO(exp.endDate), 'dd-MM-yyyy') : '?'}
                             </div>
 
                             <div className="flex justify-between items-center text-sm pt-4 border-t mt-auto">

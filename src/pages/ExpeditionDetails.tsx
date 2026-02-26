@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams, NavLink, Outlet } from 'react-router-dom';
+import { format, parseISO } from 'date-fns';
 import { useStore } from '../store/useStore';
 import { MapPin, Calendar, Users, Wallet, CheckSquare, Anchor, Shirt, KanbanSquare, Pencil } from 'lucide-react';
 import { Input, Button, cn } from '../components/ui/forms';
@@ -67,7 +68,7 @@ export function ExpeditionDetails() {
                         </span>
                         <span className="text-primary-foreground/80 flex items-center gap-1 text-sm">
                             <Calendar size={16} />
-                            {expedition.startDate} a {expedition.endDate}
+                            {expedition.startDate ? format(parseISO(expedition.startDate), 'dd-MM-yyyy') : '?'} a {expedition.endDate ? format(parseISO(expedition.endDate), 'dd-MM-yyyy') : '?'}
                         </span>
                     </div>
                     <div className="flex items-center gap-3 mb-2">
