@@ -90,9 +90,9 @@ export function Pessoas() {
                             <tr>
                                 <th className="px-6 py-3">Nome</th>
                                 <th className="px-6 py-3">Tipo</th>
-                                <th className="px-6 py-3">Telefone</th>
-                                <th className="px-6 py-3 text-center">Bebe Álcool?</th>
-                                <th className="px-6 py-3 text-center">Status</th>
+                                <th className="px-6 py-3 hidden md:table-cell">Telefone</th>
+                                <th className="px-6 py-3 text-center hidden xl:table-cell">Bebe Álcool?</th>
+                                <th className="px-6 py-3 text-center hidden sm:table-cell">Status</th>
                                 <th className="px-6 py-3 text-right">Ações</th>
                             </tr>
                         </thead>
@@ -113,14 +113,14 @@ export function Pessoas() {
                                                 {person.type}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">{person.phone || '-'}</td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-6 py-4 hidden md:table-cell">{person.phone || '-'}</td>
+                                        <td className="px-6 py-4 text-center hidden xl:table-cell">
                                             <span className={`text-xs px-2 py-0.5 rounded font-medium ${person.drinksAlcohol ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
                                                 }`}>
                                                 {person.drinksAlcohol ? 'Sim' : 'Não'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-6 py-4 text-center hidden sm:table-cell">
                                             <span className={person.isActive ? "text-green-600 font-medium" : "text-stone-400"}>
                                                 {person.isActive ? 'Ativo' : 'Inativo'}
                                             </span>
@@ -155,7 +155,7 @@ export function Pessoas() {
                         onChange={e => setFormData({ ...formData, name: e.target.value })}
                         required
                     />
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-foreground">Tipo de Vínculo</label>
                             <select

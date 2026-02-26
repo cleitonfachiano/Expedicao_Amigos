@@ -78,7 +78,7 @@ export function ExpeditionParticipantes() {
                             return (
                                 <div
                                     key={profile.id}
-                                    className={`p-4 flex items-center justify-between gap-4 transition-colors ${isParticipating ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-stone-50 border-l-4 border-transparent'}`}
+                                    className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${isParticipating ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-stone-50 border-l-4 border-transparent'}`}
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center text-stone-500 font-bold shrink-0">
@@ -97,7 +97,7 @@ export function ExpeditionParticipantes() {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-3">
                                         <div className="flex gap-2 mr-2">
                                             {profile.drinksAlcohol && (
                                                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-600" title="Consome Bebida Alcoólica">

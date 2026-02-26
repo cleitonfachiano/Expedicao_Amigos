@@ -136,8 +136,8 @@ export function Mensalidades() {
 
             <div className="bg-card border rounded-radius shadow-sm p-6">
                 <h3 className="text-lg font-semibold mb-4">Configuração Anual</h3>
-                <div className="flex flex-col md:flex-row gap-4 items-end justify-between">
-                    <div className="flex gap-4 items-end">
+                <div className="flex flex-col md:flex-row gap-4 items-start md:items-end justify-between">
+                    <div className="flex flex-wrap gap-4 items-end">
                         <div className="flex items-center gap-2">
                             <Button variant="outline" onClick={() => setSelectedYear(y => y - 1)} className="px-2">
                                 <ChevronLeft size={20} />

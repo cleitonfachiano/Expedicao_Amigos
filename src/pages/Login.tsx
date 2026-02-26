@@ -65,7 +65,7 @@ export function Login() {
 
                 <div className="relative z-10 space-y-6 max-w-lg mb-12">
                     <h1 className="text-4xl lg:text-5xl font-extrabold text-white leading-tight tracking-tight">
-                        Planejamento de <br /><span className="text-amber-300">excelência</span> para nossa Expedição.
+                        Planejamento de <br /><span className="text-amber-300">Excelência</span> para nossa Expedição.
                     </h1>
                     <p className="text-lg text-primary-foreground/90 font-medium leading-relaxed">
                         Gerencie finanças, participantes, acampamentos e relatórios em um único lugar, de forma moderna e conectada à nuvem.

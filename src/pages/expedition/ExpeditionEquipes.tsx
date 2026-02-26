@@ -79,10 +79,10 @@ export function ExpeditionEquipes() {
                         return (
                             <div key={team.id} className="bg-card border rounded-radius shadow-sm overflow-hidden flex flex-col">
                                 <div
-                                    className="p-4 border-b flex justify-between items-center"
+                                    className="p-4 border-b flex flex-wrap gap-2 justify-between items-center"
                                     style={{ borderTop: `4px solid ${team.colorHex}` }}
                                 >
-                                    <h3 className="font-bold text-lg">{team.name}</h3>
+                                    <h3 className="font-bold text-lg break-all">{team.name}</h3>
                                     {canEdit && <button onClick={() => { if (confirm('Apagar equipe?')) deleteTeam(team.id) }} className="text-stone-400 hover:text-destructive">Excluir</button>}
                                 </div>
 

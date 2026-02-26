@@ -149,7 +149,7 @@ export function ExpeditionCamisetas() {
 
                                 <div className="flex-1 flex flex-col gap-2">
                                     {orders.map(order => (
-                                        <div key={order.id} className="flex flex-wrap items-center gap-2 bg-white border rounded-md p-2 shadow-sm text-sm lg:ml-auto">
+                                        <div key={order.id} className="flex flex-wrap items-center gap-2 gap-y-3 bg-white border rounded-md p-2 shadow-sm text-sm lg:ml-auto w-full sm:w-auto mt-2 sm:mt-0">
                                             <span className="font-medium text-stone-500 hidden sm:inline">Tamanho:</span>
                                             <select
                                                 className={`border rounded px-2 h-7 font-bold outline-none ${canEdit ? 'bg-stone-50 focus:border-primary' : 'bg-transparent text-stone-600 appearance-none'}`}
@@ -160,7 +160,7 @@ export function ExpeditionCamisetas() {
                                                 {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                                             </select>
 
-                                            <span className="mx-2 text-stone-300">|</span>
+                                            <span className="mx-2 text-stone-300 hidden sm:inline">|</span>
 
                                             <span className="font-medium text-stone-500 hidden sm:inline">Qtd:</span>
                                             <input
@@ -172,7 +172,7 @@ export function ExpeditionCamisetas() {
                                                 readOnly={!canEdit}
                                             />
 
-                                            <span className="mx-2 text-stone-300">|</span>
+                                            <span className="mx-2 text-stone-300 hidden sm:inline">|</span>
 
                                             <span className="font-medium text-stone-500 hidden sm:inline">R$ Unid:</span>
                                             <input
@@ -186,7 +186,7 @@ export function ExpeditionCamisetas() {
                                                 readOnly={!canEdit}
                                             />
 
-                                            <span className="mx-2 text-stone-300">|</span>
+                                            <span className="mx-2 text-stone-300 hidden sm:inline">|</span>
 
                                             <label className={`flex items-center gap-1.5 font-medium min-w-[85px] ${canEdit ? 'cursor-pointer' : 'cursor-default'}`}>
                                                 <input
@@ -201,13 +201,13 @@ export function ExpeditionCamisetas() {
                                                 </span>
                                             </label>
 
-                                            <span className="ml-2 font-bold text-stone-700 w-[100px] text-right">
+                                            <span className="ml-auto sm:ml-2 font-bold text-stone-700 w-auto sm:w-[100px] text-right">
                                                 R$ {((order.quantity || 0) * (order.price || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                             </span>
 
                                             {canEdit && <button
                                                 onClick={() => deleteTShirtOrder(order.id)}
-                                                className="ml-2 text-stone-300 hover:text-destructive transition-colors shrink-0"
+                                                className="ml-2 text-stone-300 hover:text-destructive transition-colors shrink-0 p-1"
                                                 title="Remover pedido"
                                             >
                                                 <Trash2 size={16} />
