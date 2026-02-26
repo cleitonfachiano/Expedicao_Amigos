@@ -290,8 +290,8 @@ export function ExpeditionAcampamento() {
                         </li>
                     ) : (
                         currentItems.map(item => (
-                            <li key={item.id} className={`flex flex-col md:flex-row md:items-center gap-3 p-4 transition-colors hover:bg-stone-50 ${item.isChecked ? 'opacity-60 bg-stone-50/50' : ''}`}>
-                                <div className="flex items-center gap-3 w-full">
+                            <li key={item.id} className={`flex flex-col md:flex-row md:items-center p-4 transition-colors hover:bg-stone-50 ${item.isChecked ? 'opacity-60 bg-stone-50/50' : ''}`}>
+                                <div className="flex flex-wrap md:flex-nowrap items-start md:items-center gap-3 w-full">
                                     <button
                                         onClick={() => { if (canEdit) toggleChecklistItem(item.id) }}
                                         className={`transition-colors ${canEdit ? (item.isChecked ? 'text-primary' : 'text-stone-300 hover:text-stone-400') : (item.isChecked ? 'text-primary cursor-default' : 'text-stone-300 cursor-default')} shrink-0`}
