@@ -175,17 +175,17 @@ export function ExpeditionAcampamento() {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h2 className="text-2xl font-bold tracking-tight">Suprimentos e Checklist</h2>
-                <div className="flex bg-stone-100 p-1 rounded-radius border w-fit">
+                <div className="flex flex-col sm:flex-row bg-stone-100 p-1 w-full md:w-fit rounded-radius border">
                     <button
-                        className={`px-4 py-2 text-sm font-medium rounded-md flex items-center gap-2 transition-colors ${activeTab === 'Mercado' ? 'bg-white shadow-sm text-primary' : 'text-stone-500 hover:text-stone-700'}`}
+                        className={`px-4 py-2 text-sm font-medium rounded-md flex justify-center items-center gap-2 transition-colors w-full sm:w-auto ${activeTab === 'Mercado' ? 'bg-white shadow-sm text-primary' : 'text-stone-500 hover:text-stone-700'}`}
                         onClick={() => setActiveTab('Mercado')}
                     >
                         <ShoppingCart size={16} /> Lista de Mercado
                     </button>
                     <button
-                        className={`px-4 py-2 text-sm font-medium rounded-md flex items-center gap-2 transition-colors ${activeTab === 'Acampamento' ? 'bg-white shadow-sm text-primary' : 'text-stone-500 hover:text-stone-700'}`}
+                        className={`px-4 py-2 mt-1 sm:mt-0 text-sm font-medium rounded-md flex justify-center items-center gap-2 transition-colors w-full sm:w-auto ${activeTab === 'Acampamento' ? 'bg-white shadow-sm text-primary' : 'text-stone-500 hover:text-stone-700'}`}
                         onClick={() => setActiveTab('Acampamento')}
                     >
                         <Tent size={16} /> Acampamento
@@ -300,40 +300,40 @@ export function ExpeditionAcampamento() {
                                     </button>
 
                                     <div className={`flex-1 flex flex-col md:flex-row md:items-center min-w-0 ${canEdit ? 'cursor-pointer' : ''}`} onClick={() => { if (canEdit) toggleChecklistItem(item.id) }}>
-                                        <span className={`font-medium truncate flex-1 ${item.isChecked ? 'line-through text-stone-500' : 'text-stone-800'}`}>
+                                        <span className={`font-medium truncate min-h-[1.5rem] flex-1 ${item.isChecked ? 'line-through text-stone-500' : 'text-stone-800'}`}>
                                             {item.name}
                                         </span>
 
-                                        <div className="flex flex-row items-center gap-2 md:gap-0 mt-1 md:mt-0 text-sm">
+                                        <div className="flex flex-row flex-wrap items-center gap-3 md:gap-0 mt-2 md:mt-0 text-sm w-full md:w-auto">
                                             <div className="md:w-24 md:text-center text-stone-600">
                                                 {item.quantity ? `${item.quantity.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${item.unit || ''}` : '-'}
                                             </div>
                                             <div className="md:w-24 md:text-right text-stone-500">
-                                                {item.unitPrice ? `R$ ${item.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                                                {item.unitPrice ? <><span className="md:hidden text-stone-400 text-xs mr-1">R$</span>{item.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</> : '-'}
                                             </div>
-                                            <div className="md:w-24 md:text-right font-semibold text-stone-700">
+                                            <div className="md:w-24 md:text-right font-semibold text-stone-700 shrink-0">
                                                 {item.totalPrice ? `R$ ${item.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2 shrink-0 md:ml-4">
+                                    <div className="flex items-center gap-2 shrink-0 w-full md:w-auto md:ml-4 mt-2 md:mt-0 justify-end md:justify-start">
                                         {canEdit && item.totalPrice && item.totalPrice > 0 ? (
                                             item.transactionId ? (
-                                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded w-20 text-center font-medium" title="Já lançado no financeiro">
+                                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1.5 rounded w-20 text-center font-medium" title="Já lançado no financeiro">
                                                     Rateado
                                                 </span>
                                             ) : (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleLaunchFinance(item); }}
-                                                    className="text-xs bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-2 py-1 rounded w-20 text-center flex items-center justify-center gap-1 transition-colors"
+                                                    className="text-xs bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-2 py-1.5 rounded w-20 text-center flex items-center justify-center gap-1 transition-colors"
                                                     title="Lançar no Financeiro da Expedição"
                                                 >
                                                     <DollarSign size={12} /> Lançar
                                                 </button>
                                             )
                                         ) : (
-                                            <span className="w-20 inline-block"></span>
+                                            <span className="w-20 hidden md:inline-block"></span>
                                         )}
 
                                         {canEdit && (

@@ -55,15 +55,15 @@ export function ExpeditionEquipes() {
 
     return (
         <div className="space-y-8">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">Equipes e Barcos</h2>
                     <p className="text-stone-500">Organize os barcos, pilotos e as equipes de pesca.</p>
                 </div>
                 {canEdit && (
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => setIsBoatModalOpen(true)}>Adicionar Barco</Button>
-                        <Button onClick={() => setIsTeamModalOpen(true)}>Criar Equipe</Button>
+                    <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2">
+                        <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsBoatModalOpen(true)}>Adicionar Barco</Button>
+                        <Button className="w-full sm:w-auto" onClick={() => setIsTeamModalOpen(true)}>Criar Equipe</Button>
                     </div>
                 )}
             </div>
