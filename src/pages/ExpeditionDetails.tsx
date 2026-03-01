@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useParams, NavLink, Outlet } from 'react-router-dom';
+import { useParams, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { useStore } from '../store/useStore';
-import { MapPin, Calendar, Users, Wallet, CheckSquare, Anchor, Shirt, KanbanSquare, Pencil } from 'lucide-react';
+import { MapPin, Calendar, Users, Wallet, CheckSquare, Anchor, Shirt, KanbanSquare, Pencil, Trash2 } from 'lucide-react';
 import { Input, Button, cn } from '../components/ui/forms';
 import { Modal } from '../components/ui/Modal';
 
@@ -18,9 +18,13 @@ const expTabs = [
 
 export function ExpeditionDetails() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const expeditions = useStore(state => state.expeditions);
     const updateExpedition = useStore(state => state.updateExpedition);
+    const deleteExpedition = useStore(state => state.deleteExpedition);
+    const currentUser = useStore(state => state.currentUser);
     const expedition = expeditions.find(e => e.id === id);
+    const canEdit = currentUser?.role === 'Admin' || currentUser?.role === 'Editor';
 
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [editForm, setEditForm] = useState({
@@ -52,6 +56,13 @@ export function ExpeditionDetails() {
         setEditModalOpen(false);
     };
 
+    const handleDelete = () => {
+        if (confirm(`Tem certeza que deseja excluir a expedição "${expedition.name}"?\n\nTODOS os dados relacionados (transações, checklist, participantes, equipes, tarefas e camisetas) serão excluídos permanentemente.`)) {
+            deleteExpedition(expedition.id);
+            navigate('/');
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
             {/* Cabeçalho */}
@@ -78,10 +89,19 @@ export function ExpeditionDetails() {
                         <button
                             onClick={openEditModal}
                             className="p-2 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground rounded-full transition-colors flex items-center justify-center"
-                            title="Editar Requisições da Expedição"
+                            title="Editar Expedição"
                         >
                             <Pencil size={18} />
                         </button>
+                        {canEdit && (
+                            <button
+                                onClick={handleDelete}
+                                className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 rounded-full transition-colors flex items-center justify-center"
+                                title="Excluir Expedição"
+                            >
+                                <Trash2 size={18} />
+                            </button>
+                        )}
                     </div>
                     <p className="text-primary-foreground/90 flex items-center gap-1.5 font-medium">
                         <MapPin size={18} /> {expedition.location || 'Local a definir'}
