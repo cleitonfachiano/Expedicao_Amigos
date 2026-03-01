@@ -99,12 +99,12 @@ export function ExpeditionAcampamento() {
         setFinanceModalOpen(true);
     };
 
-    const confirmLaunchFinance = (e: React.FormEvent) => {
+    const confirmLaunchFinance = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!itemToLaunch || !payerId || !itemToLaunch.totalPrice) return;
 
         const transId = uuidv4();
-        addTransaction({
+        await addTransaction({
             id: transId,
             expeditionId: expedition.id,
             description: `[${activeTab}] ${itemToLaunch.name} (${itemToLaunch.quantity} ${itemToLaunch.unit})`,
@@ -120,7 +120,7 @@ export function ExpeditionAcampamento() {
 
         // Se pago pelo caixa, gera SAÍDA no financeiro global
         if (payerId === 'caixa') {
-            addFinancialTransaction({
+            await addFinancialTransaction({
                 type: 'SAIDA',
                 description: `Despesa Expedição ${expedition.name} - ${itemToLaunch.name}`,
                 amount: itemToLaunch.totalPrice,
@@ -135,8 +135,8 @@ export function ExpeditionAcampamento() {
             });
         }
 
-        // Marca o item como lançado
-        updateChecklistItem(itemToLaunch.id, { transactionId: transId });
+        // Marca o item como lançado (await para garantir que o transaction_id FK seja válido)
+        await updateChecklistItem(itemToLaunch.id, { transactionId: transId });
 
         setFinanceModalOpen(false);
         setItemToLaunch(null);
