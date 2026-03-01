@@ -425,8 +425,25 @@ export const useStore = create<AppState>()(
                 }
             },
             deleteExpedition: async (id) => {
-                set((state) => ({ expeditions: state.expeditions.filter(e => e.id !== id) }));
-                await supabase.from('expeditions').delete().eq('id', id);
+                // Limpar dados relacionados da memória
+                set((state) => ({
+                    expeditions: state.expeditions.filter(e => e.id !== id),
+                    transactions: state.transactions.filter(t => t.expeditionId !== id),
+                    checklistItems: state.checklistItems.filter(i => i.expeditionId !== id),
+                    tshirtOrders: state.tshirtOrders.filter(o => o.expeditionId !== id),
+                    tasks: state.tasks.filter(t => t.expeditionId !== id),
+                }));
+
+                // Deletar dependências explicitamente (caso RLS bloqueie cascade)
+                await supabase.from('expedition_participants').delete().eq('expedition_id', id);
+                await supabase.from('checklist_items').delete().eq('expedition_id', id);
+                await supabase.from('transactions').delete().eq('expedition_id', id);
+                await supabase.from('tshirt_orders').delete().eq('expedition_id', id);
+                await supabase.from('tasks').delete().eq('expedition_id', id);
+                await supabase.from('teams').delete().eq('expedition_id', id);
+                await supabase.from('boats').delete().eq('expedition_id', id);
+                const { error } = await supabase.from('expeditions').delete().eq('id', id);
+                if (error) console.error('Erro ao deletar expedição:', error);
             },
 
             // --- TRANSACTIONS (COMPRAS) ---

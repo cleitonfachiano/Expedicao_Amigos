@@ -27,6 +27,7 @@ export function ExpeditionDetails() {
     const canEdit = currentUser?.role === 'Admin' || currentUser?.role === 'Editor';
 
     const [editModalOpen, setEditModalOpen] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [editForm, setEditForm] = useState({
         name: '',
         year: new Date().getFullYear(),
@@ -56,11 +57,9 @@ export function ExpeditionDetails() {
         setEditModalOpen(false);
     };
 
-    const handleDelete = () => {
-        if (confirm(`Tem certeza que deseja excluir a expedição "${expedition.name}"?\n\nTODOS os dados relacionados (transações, checklist, participantes, equipes, tarefas e camisetas) serão excluídos permanentemente.`)) {
-            deleteExpedition(expedition.id);
-            navigate('/');
-        }
+    const handleConfirmDelete = async () => {
+        await deleteExpedition(expedition.id);
+        navigate('/');
     };
 
     return (
@@ -95,7 +94,7 @@ export function ExpeditionDetails() {
                         </button>
                         {canEdit && (
                             <button
-                                onClick={handleDelete}
+                                onClick={() => setDeleteModalOpen(true)}
                                 className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 rounded-full transition-colors flex items-center justify-center"
                                 title="Excluir Expedição"
                             >
@@ -189,6 +188,22 @@ export function ExpeditionDetails() {
                         <Button type="submit">Atualizar</Button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Modal de Confirmação de Exclusão */}
+            <Modal isOpen={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Excluir Expedição">
+                <div className="space-y-4 pt-2">
+                    <p className="text-stone-600">
+                        Tem certeza que deseja excluir a expedição <strong>"{expedition.name}"</strong>?
+                    </p>
+                    <p className="text-red-600 text-sm font-medium bg-red-50 p-3 rounded-md">
+                        ⚠️ TODOS os dados relacionados (transações, checklist, participantes, equipes, tarefas e camisetas) serão excluídos permanentemente.
+                    </p>
+                    <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+                        <Button type="button" variant="ghost" onClick={() => setDeleteModalOpen(false)}>Cancelar</Button>
+                        <Button type="button" onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700 text-white">Excluir Permanentemente</Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );
