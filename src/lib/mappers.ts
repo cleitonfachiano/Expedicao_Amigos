@@ -1,4 +1,4 @@
-import type { User, Profile, Expedition, Transaction, MonthlyFee, FinancialTransaction, Task, Boat, Team, ChecklistItem, TShirtOrder } from '../store/useStore';
+import type { User, Profile, Expedition, Transaction, MonthlyFee, FinancialTransaction, Task, Boat, Team, ChecklistItem, ChecklistTemplate, TShirtOrder } from '../store/useStore';
 
 // -- Mappers from DB to App (snake_case -> camelCase) -- //
 
@@ -117,6 +117,16 @@ export const mapChecklistItem = (db: any): ChecklistItem => ({
     isChecked: db.is_checked,
 });
 
+export const mapChecklistTemplate = (db: any): ChecklistTemplate => ({
+    id: db.id,
+    category: db.category,
+    name: db.name,
+    quantity: db.quantity ? Number(db.quantity) : undefined,
+    unit: db.unit || undefined,
+    unitPrice: db.unit_price ? Number(db.unit_price) : undefined,
+    totalPrice: db.total_price ? Number(db.total_price) : undefined,
+});
+
 export const mapTShirtOrder = (db: any): TShirtOrder => ({
     id: db.id,
     expeditionId: db.expedition_id,
@@ -223,6 +233,15 @@ export const unmapChecklistItem = (app: Omit<ChecklistItem, 'id'> | Partial<Chec
     total_price: app.totalPrice,
     transaction_id: app.transactionId,
     is_checked: app.isChecked,
+});
+
+export const unmapChecklistTemplate = (app: Omit<ChecklistTemplate, 'id'> | Partial<ChecklistTemplate>): any => ({
+    category: app.category,
+    name: app.name,
+    quantity: app.quantity,
+    unit: app.unit,
+    unit_price: app.unitPrice,
+    total_price: app.totalPrice,
 });
 
 export const unmapTShirtOrder = (app: Omit<TShirtOrder, 'id'> | Partial<TShirtOrder>): any => ({

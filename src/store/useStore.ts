@@ -134,6 +134,16 @@ export type ChecklistItem = {
     isChecked: boolean;
 };
 
+export type ChecklistTemplate = {
+    id: string;
+    category: 'Mercado' | 'Acampamento';
+    name: string;
+    quantity?: number | string;
+    unit?: string;
+    unitPrice?: number;
+    totalPrice?: number;
+};
+
 export type TShirtOrder = {
     id: string;
     expeditionId: string;
@@ -158,6 +168,7 @@ interface AppState {
     boats: Boat[];
     teams: Team[];
     checklistItems: ChecklistItem[];
+    checklistTemplates: ChecklistTemplate[];
     tshirtOrders: TShirtOrder[];
     financialTransactions: FinancialTransaction[];
 
@@ -213,6 +224,12 @@ interface AppState {
     deleteChecklistItem: (id: string) => void;
     toggleChecklistItem: (id: string) => void;
 
+    addChecklistTemplate: (template: Omit<ChecklistTemplate, 'id'>) => void;
+    updateChecklistTemplate: (id: string, template: Partial<ChecklistTemplate>) => void;
+    deleteChecklistTemplate: (id: string) => void;
+    saveCurrentAsTemplates: (expeditionId: string) => void;
+    copyTemplatesToExpedition: (expeditionId: string) => void;
+
     addTShirtOrder: (order: Omit<TShirtOrder, 'id'>) => void;
     updateTShirtOrder: (id: string, order: Partial<TShirtOrder>) => void;
     deleteTShirtOrder: (id: string) => void;
@@ -234,6 +251,7 @@ export const useStore = create<AppState>()(
             boats: [],
             teams: [],
             checklistItems: [],
+            checklistTemplates: [],
             tshirtOrders: [],
             financialTransactions: [],
 
@@ -248,6 +266,7 @@ export const useStore = create<AppState>()(
                     { data: boats },
                     { data: teams },
                     { data: checklistItems },
+                    { data: checklistTemplates },
                     { data: tshirtOrders },
                     { data: teamMembers },
                     { data: expParts },
@@ -262,6 +281,7 @@ export const useStore = create<AppState>()(
                     supabase.from('boats').select('*'),
                     supabase.from('teams').select('*'),
                     supabase.from('checklist_items').select('*'),
+                    supabase.from('checklist_templates').select('*'),
                     supabase.from('tshirt_orders').select('*'),
                     supabase.from('team_members').select('*'),
                     supabase.from('expedition_participants').select('*'),
@@ -293,6 +313,7 @@ export const useStore = create<AppState>()(
                     tasks: (tasks || []).map(mappers.mapTask),
                     boats: (boats || []).map(mappers.mapBoat),
                     checklistItems: (checklistItems || []).map(mappers.mapChecklistItem),
+                    checklistTemplates: (checklistTemplates || []).map(mappers.mapChecklistTemplate),
                     tshirtOrders: (tshirtOrders || []).map(mappers.mapTShirtOrder)
                 });
             },
@@ -376,6 +397,9 @@ export const useStore = create<AppState>()(
                     const inserts = exp.participants.map(pId => ({ expedition_id: newId, profile_id: pId }));
                     await supabase.from('expedition_participants').insert(inserts);
                 }
+
+                // Copiar templates para a nova expedição
+                get().copyTemplatesToExpedition(newId);
             },
             updateExpedition: async (id, updated) => {
                 set((state) => ({ expeditions: state.expeditions.map(e => e.id === id ? { ...e, ...updated } : e) }));
@@ -665,6 +689,67 @@ export const useStore = create<AppState>()(
                 if (item.transactionId) {
                     await supabase.from('transactions').update({ is_paid: newStatus }).eq('id', item.transactionId);
                 }
+            },
+
+            // --- CHECKLIST TEMPLATES ---
+            addChecklistTemplate: async (template) => {
+                const newId = uuidv4();
+                set((state) => ({ checklistTemplates: [...state.checklistTemplates, { ...template, id: newId }] }));
+                await supabase.from('checklist_templates').insert({ id: newId, ...mappers.unmapChecklistTemplate(template) });
+            },
+            updateChecklistTemplate: async (id, updated) => {
+                set((state) => ({ checklistTemplates: state.checklistTemplates.map(t => t.id === id ? { ...t, ...updated } : t) }));
+                await supabase.from('checklist_templates').update(mappers.cleanUpdate(mappers.unmapChecklistTemplate(updated))).eq('id', id);
+            },
+            deleteChecklistTemplate: async (id) => {
+                set((state) => ({ checklistTemplates: state.checklistTemplates.filter(t => t.id !== id) }));
+                await supabase.from('checklist_templates').delete().eq('id', id);
+            },
+            saveCurrentAsTemplates: async (expeditionId) => {
+                const { checklistItems } = get();
+                const expItems = checklistItems.filter(i => i.expeditionId === expeditionId);
+
+                // Limpar templates antigos
+                await supabase.from('checklist_templates').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+                // Criar novos templates a partir dos itens da expedição
+                const newTemplates: ChecklistTemplate[] = expItems.map(item => ({
+                    id: uuidv4(),
+                    category: item.category as 'Mercado' | 'Acampamento',
+                    name: item.name,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    unitPrice: item.unitPrice,
+                    totalPrice: item.totalPrice,
+                }));
+
+                set({ checklistTemplates: newTemplates });
+
+                if (newTemplates.length > 0) {
+                    const inserts = newTemplates.map(t => ({ id: t.id, ...mappers.unmapChecklistTemplate(t) }));
+                    await supabase.from('checklist_templates').insert(inserts);
+                }
+            },
+            copyTemplatesToExpedition: async (expeditionId) => {
+                const { checklistTemplates } = get();
+                if (checklistTemplates.length === 0) return;
+
+                const newItems: ChecklistItem[] = checklistTemplates.map(t => ({
+                    id: uuidv4(),
+                    expeditionId,
+                    category: t.category,
+                    name: t.name,
+                    quantity: t.quantity,
+                    unit: t.unit,
+                    unitPrice: t.unitPrice,
+                    totalPrice: t.totalPrice,
+                    isChecked: false,
+                }));
+
+                set((state) => ({ checklistItems: [...state.checklistItems, ...newItems] }));
+
+                const inserts = newItems.map(item => ({ id: item.id, ...mappers.unmapChecklistItem(item) }));
+                await supabase.from('checklist_items').insert(inserts);
             },
 
             // --- T-SHIRTS ---

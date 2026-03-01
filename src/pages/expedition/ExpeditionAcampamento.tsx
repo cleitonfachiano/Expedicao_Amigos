@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useStore, type Expedition } from '../../store/useStore';
 import { Input, Button } from '../../components/ui/forms';
-import { ShoppingCart, Tent, CheckSquare, Square, Trash2, Wand2, DollarSign, Pencil } from 'lucide-react';
+import { ShoppingCart, Tent, CheckSquare, Square, Trash2, Wand2, DollarSign, Pencil, Save } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,6 +17,7 @@ export function ExpeditionAcampamento() {
     const deleteChecklistItem = useStore(state => state.deleteChecklistItem);
     const addTransaction = useStore(state => state.addTransaction);
     const addFinancialTransaction = useStore(state => state.addFinancialTransaction);
+    const saveCurrentAsTemplates = useStore(state => state.saveCurrentAsTemplates);
     const profiles = useStore((state) => state.profiles);
 
     const currentUser = useStore(state => state.currentUser);
@@ -203,9 +204,21 @@ export function ExpeditionAcampamento() {
                             {checkedCount} de {currentItems.length} itens marcados ({progressPercent}%)
                         </p>
                     </div>
-                    {canEdit && <Button variant="outline" size="sm" onClick={handleAutoGenerate} className="gap-2">
-                        <Wand2 size={16} /> Gerar Sugestão
-                    </Button>}
+                    {canEdit && (
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => {
+                                if (confirm('Salvar os itens atuais como lista base para futuras expedições? Isso substituirá a lista base anterior.')) {
+                                    saveCurrentAsTemplates(expedition.id);
+                                    alert('Lista base salva com sucesso! Os itens atuais serão copiados automaticamente para toda nova expedição.');
+                                }
+                            }} className="gap-2" title="Salvar os itens atuais como lista padrão para futuras expedições">
+                                <Save size={16} /> Salvar como Lista Base
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={handleAutoGenerate} className="gap-2">
+                                <Wand2 size={16} /> Gerar Sugestão
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Progress Bar */}
