@@ -266,7 +266,6 @@ export const useStore = create<AppState>()(
                     { data: boats },
                     { data: teams },
                     { data: checklistItems },
-                    { data: checklistTemplates },
                     { data: tshirtOrders },
                     { data: teamMembers },
                     { data: expParts },
@@ -281,12 +280,18 @@ export const useStore = create<AppState>()(
                     supabase.from('boats').select('*'),
                     supabase.from('teams').select('*'),
                     supabase.from('checklist_items').select('*'),
-                    supabase.from('checklist_templates').select('*'),
                     supabase.from('tshirt_orders').select('*'),
                     supabase.from('team_members').select('*'),
                     supabase.from('expedition_participants').select('*'),
                     supabase.from('users').select('*')
                 ]);
+
+                // Buscar templates separadamente (tabela pode não existir ainda)
+                let checklistTemplates: any[] = [];
+                try {
+                    const { data } = await supabase.from('checklist_templates').select('*');
+                    checklistTemplates = data || [];
+                } catch { /* tabela ainda não criada */ }
 
                 const mappedProfiles = (profiles || []).map(mappers.mapProfile);
 
@@ -313,7 +318,7 @@ export const useStore = create<AppState>()(
                     tasks: (tasks || []).map(mappers.mapTask),
                     boats: (boats || []).map(mappers.mapBoat),
                     checklistItems: (checklistItems || []).map(mappers.mapChecklistItem),
-                    checklistTemplates: (checklistTemplates || []).map(mappers.mapChecklistTemplate),
+                    checklistTemplates: checklistTemplates.map(mappers.mapChecklistTemplate),
                     tshirtOrders: (tshirtOrders || []).map(mappers.mapTShirtOrder)
                 });
             },
