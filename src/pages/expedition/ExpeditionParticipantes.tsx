@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import { useStore, type Expedition } from '../../store/useStore';
 import { Users, Search, Beer, UserMinus, Trash2, UserPlus, Pencil, X, Check } from 'lucide-react';
 

@@ -4,7 +4,7 @@ import { useStore, type Expedition, type TransactionCategory } from '../../store
 import { Input, Button } from '../../components/ui/forms';
 import { Modal } from '../../components/ui/Modal';
 import { format, parseISO } from 'date-fns';
-import { Receipt, UserMinus, Beer, CheckSquare, Square, Trash2, Pencil, Info, Users } from 'lucide-react';
+import { Receipt, UserMinus, Beer, CheckSquare, Square, Trash2, Pencil, Info } from 'lucide-react';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -408,7 +408,9 @@ export function ExpeditionFinanceiro() {
                                                 </span>
                                             )}
                                             {!pb.profile.drinkGroup && pb.profile.drinksAlcohol && (
-                                                <Beer size={12} className="text-amber-500" title="Bebedor" />
+                                                <span title="Bebedor">
+                                                    <Beer size={12} className="text-amber-500" />
+                                                </span>
                                             )}
                                         </div>
                                     </td>

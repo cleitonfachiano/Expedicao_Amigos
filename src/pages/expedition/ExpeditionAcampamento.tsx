@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useStore, type Expedition } from '../../store/useStore';
 import { Input, Button } from '../../components/ui/forms';
