@@ -22,6 +22,7 @@ export function Pessoas() {
         phone: '',
         email: '',
         drinksAlcohol: false,
+        drinkGroup: '',
         isActive: true
     });
 
@@ -31,7 +32,7 @@ export function Pessoas() {
 
     const openNewModal = () => {
         setEditingId(null);
-        setFormData({ name: '', type: 'Sócio', phone: '', email: '', drinksAlcohol: false, isActive: true });
+        setFormData({ name: '', type: 'Sócio', phone: '', email: '', drinksAlcohol: false, drinkGroup: '', isActive: true });
         setIsModalOpen(true);
     };
 
@@ -43,6 +44,7 @@ export function Pessoas() {
             phone: p.phone,
             email: p.email || '',
             drinksAlcohol: p.drinksAlcohol,
+            drinkGroup: p.drinkGroup || '',
             isActive: p.isActive
         });
         setIsModalOpen(true);
@@ -52,10 +54,15 @@ export function Pessoas() {
         e.preventDefault();
         if (!formData.name) return;
 
+        const profileData = {
+            ...formData,
+            drinksAlcohol: !!formData.drinkGroup || formData.drinksAlcohol,
+            drinkGroup: formData.drinkGroup || undefined,
+        };
         if (editingId) {
-            updateProfile(editingId, formData);
+            updateProfile(editingId, profileData);
         } else {
-            addProfile(formData);
+            addProfile(profileData);
         }
         setIsModalOpen(false);
     };
@@ -91,7 +98,7 @@ export function Pessoas() {
                                 <th className="px-6 py-3">Nome</th>
                                 <th className="px-6 py-3">Tipo</th>
                                 <th className="px-6 py-3 hidden md:table-cell">Telefone</th>
-                                <th className="px-6 py-3 text-center hidden xl:table-cell">Bebe Álcool?</th>
+                                <th className="px-6 py-3 text-center hidden xl:table-cell">Cerveja</th>
                                 <th className="px-6 py-3 text-center hidden sm:table-cell">Status</th>
                                 <th className="px-6 py-3 text-right">Ações</th>
                             </tr>
@@ -115,10 +122,15 @@ export function Pessoas() {
                                         </td>
                                         <td className="px-6 py-4 hidden md:table-cell">{person.phone || '-'}</td>
                                         <td className="px-6 py-4 text-center hidden xl:table-cell">
-                                            <span className={`text-xs px-2 py-0.5 rounded font-medium ${person.drinksAlcohol ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
-                                                }`}>
-                                                {person.drinksAlcohol ? 'Sim' : 'Não'}
-                                            </span>
+                                            {person.drinkGroup ? (
+                                                <span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-800">
+                                                    🍺 {person.drinkGroup}
+                                                </span>
+                                            ) : person.drinksAlcohol ? (
+                                                <span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-800">Sim</span>
+                                            ) : (
+                                                <span className="text-xs px-2 py-0.5 rounded font-medium bg-stone-100 text-stone-500">Não bebe</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-center hidden sm:table-cell">
                                             <span className={person.isActive ? "text-green-600 font-medium" : "text-stone-400"}>
@@ -181,17 +193,19 @@ export function Pessoas() {
                         onChange={e => setFormData({ ...formData, email: e.target.value })}
                     />
 
-                    <div className="flex items-center gap-6 pt-2">
-                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <div className="space-y-3 pt-2">
+                        <div>
+                            <label className="text-sm font-medium text-foreground block mb-1">Cerveja que consome (deixe vazio se não bebe)</label>
                             <input
-                                type="checkbox"
-                                checked={formData.drinksAlcohol}
-                                onChange={e => setFormData({ ...formData, drinksAlcohol: e.target.checked })}
-                                className="rounded border-input text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                                type="text"
+                                placeholder="Ex: Heineken, Itaipava, Skol..."
+                                value={formData.drinkGroup}
+                                onChange={e => setFormData({ ...formData, drinkGroup: e.target.value, drinksAlcohol: !!e.target.value })}
+                                className="flex h-10 w-full rounded-radius border border-input bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             />
-                            <span className="font-medium">Consome Bebida Alcoólica?</span>
-                        </label>
-
+                            <p className="text-xs text-stone-400 mt-1">🍺 Participantes com a mesma marca compartilham o rateio daquela cerveja
+                            </p>
+                        </div>
                         <label className="flex items-center gap-2 text-sm cursor-pointer">
                             <input
                                 type="checkbox"

@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, Link } from 'react-router-dom';
 import { useStore, type Expedition, type TransactionCategory } from '../../store/useStore';
 import { Input, Button } from '../../components/ui/forms';
 import { Modal } from '../../components/ui/Modal';
 import { format, parseISO } from 'date-fns';
-import { Receipt, UserMinus, Beer, CheckSquare, Square, Trash2, Pencil } from 'lucide-react';
+import { Receipt, UserMinus, Beer, CheckSquare, Square, Trash2, Pencil, Info, Users } from 'lucide-react';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -29,6 +29,15 @@ export function ExpeditionFinanceiro() {
         return profiles.filter(p => expedition.participants.includes(p.id));
     }, [profiles, expedition.participants]);
 
+    // Grupos únicos de cerveja entre os participantes da expedição
+    const drinkGroups = useMemo(() => {
+        const groups = new Set<string>();
+        expeditionParticipants.forEach(p => {
+            if (p.drinkGroup) groups.add(p.drinkGroup);
+        });
+        return Array.from(groups).sort();
+    }, [expeditionParticipants]);
+
     const [formData, setFormData] = useState({
         description: '',
         amount: '1,00',
@@ -37,7 +46,8 @@ export function ExpeditionFinanceiro() {
         purchasedBy: '',
         category: 'Mercado' as TransactionCategory,
         isExpense: true,
-        isForDrinkersOnly: false
+        isForDrinkersOnly: false,
+        drinkGroup: '' // '' = geral, 'todos' = todos bebedores, '<nome>' = grupo específico
     });
 
     const [editModalOpen, setEditModalOpen] = useState(false);
@@ -50,51 +60,83 @@ export function ExpeditionFinanceiro() {
         purchasedBy: '',
         category: 'Mercado' as TransactionCategory,
         isExpense: true,
-        isForDrinkersOnly: false
+        isForDrinkersOnly: false,
+        drinkGroup: ''
     });
 
     const totalGasto = transactions.reduce((acc, curr) => acc + (curr.isExpense ? curr.totalPrice : 0), 0);
 
-    // Rateio simplificado
+    // Rateio com suporte a múltiplos grupos de cerveja
     const splitCalculations = useMemo(() => {
-        const calc = {
-            geral: 0,
-            bebidas: 0,
-            totalParticipants: expeditionParticipants.length,
-            drinkers: expeditionParticipants.filter(p => p.drinksAlcohol).length || 1, // evil division by zero fallback
-        };
+        const totalParticipants = expeditionParticipants.length;
+        let totalGeral = 0;
+
+        // Acumula gastos por grupo de bebida
+        const groupTotals: Record<string, number> = {};
+        // gastos para "todos os bebedores" sem grupo específico
+        let totalTodosBebedores = 0;
 
         transactions.forEach(t => {
-            if (t.isExpense) {
-                if (t.category === 'Bebida Alcoólica' || t.isForDrinkersOnly) {
-                    calc.bebidas += t.totalPrice;
-                } else {
-                    calc.geral += t.totalPrice;
-                }
+            if (!t.isExpense) return;
+
+            if (t.drinkGroup && t.drinkGroup !== 'todos') {
+                // Gasto específico de um grupo de marca
+                groupTotals[t.drinkGroup] = (groupTotals[t.drinkGroup] || 0) + t.totalPrice;
+            } else if (t.drinkGroup === 'todos' || t.isForDrinkersOnly || t.category === 'Bebida Alcoólica') {
+                // Gasto para todos os bebedores
+                totalTodosBebedores += t.totalPrice;
+            } else {
+                // Gasto geral
+                totalGeral += t.totalPrice;
             }
         });
 
-        const valPerPersonGeneral = calc.totalParticipants > 0 ? (calc.geral / calc.totalParticipants) : 0;
-        const valPerDrinker = calc.drinkers > 0 ? (calc.bebidas / calc.drinkers) : 0;
+        const valPerPersonGeneral = totalParticipants > 0 ? totalGeral / totalParticipants : 0;
+
+        // Para "todos bebedores": divide entre quem tem drinkGroup definido (bebedores)
+        const allDrinkers = expeditionParticipants.filter(p => p.drinksAlcohol || p.drinkGroup);
+        const valPerAllDrinkers = allDrinkers.length > 0 ? totalTodosBebedores / allDrinkers.length : 0;
+
+        // Por grupo específico: divide entre os membros daquele grupo
+        const groupPerPerson: Record<string, number> = {};
+        for (const [group, total] of Object.entries(groupTotals)) {
+            const membersOfGroup = expeditionParticipants.filter(p => p.drinkGroup === group);
+            groupPerPerson[group] = membersOfGroup.length > 0 ? total / membersOfGroup.length : 0;
+        }
 
         return {
             valPerPersonGeneral,
-            valPerDrinker,
-            calc
+            valPerAllDrinkers,
+            totalTodosBebedores,
+            groupTotals,
+            groupPerPerson,
+            totalGeral,
         };
     }, [transactions, expeditionParticipants]);
 
     const participantBalances = useMemo(() => {
         return expeditionParticipants.map(profile => {
-            const isDrinker = profile.drinksAlcohol;
-            const debt = splitCalculations.valPerPersonGeneral + (isDrinker ? splitCalculations.valPerDrinker : 0);
+            const isDrinker = profile.drinksAlcohol || !!profile.drinkGroup;
+
+            // Cota geral (todos pagam)
+            let debt = splitCalculations.valPerPersonGeneral;
+
+            // Cota de todos-os-bebedores
+            if (isDrinker) {
+                debt += splitCalculations.valPerAllDrinkers;
+            }
+
+            // Cota do grupo de marca específica
+            if (profile.drinkGroup && splitCalculations.groupPerPerson[profile.drinkGroup]) {
+                debt += splitCalculations.groupPerPerson[profile.drinkGroup];
+            }
 
             // Valores pagos nas finanças principais (caixa geral)
             const paidInFinances = financialTransactions
                 .filter(ft => ft.expeditionId === expedition.id && ft.profileId === profile.id && ft.type === 'ENTRADA' && ft.status === 'Recebido')
                 .reduce((acc, curr) => acc + curr.amount, 0);
 
-            // Valores que a própria pessoa pagou pelo grupo no mercado (e é abativo na cota dela)
+            // Valores que a própria pessoa pagou pelo grupo no mercado
             const paidAsBuyer = transactions
                 .filter(t => t.purchasedBy === profile.id && t.isExpense)
                 .reduce((acc, curr) => acc + curr.totalPrice, 0);
@@ -122,6 +164,9 @@ export function ExpeditionFinanceiro() {
 
         if (isNaN(parsedAmount) || isNaN(parsedPrice)) return;
 
+        const drinkGroupValue = formData.drinkGroup || undefined;
+        const isForDrinkersOnly = !!drinkGroupValue;
+
         const transId = uuidv4();
         addTransaction({
             id: transId,
@@ -134,7 +179,8 @@ export function ExpeditionFinanceiro() {
             purchasedBy: formData.purchasedBy,
             category: formData.category,
             isExpense: formData.isExpense,
-            isForDrinkersOnly: formData.isForDrinkersOnly
+            isForDrinkersOnly,
+            drinkGroup: drinkGroupValue,
         });
 
         // Se a origem pagadora for o caixa da expedição, o dinheiro precisa sair do saldo geral
@@ -143,7 +189,7 @@ export function ExpeditionFinanceiro() {
                 type: 'SAIDA',
                 description: `Despesa Expedição ${expedition.name} - ${formData.description}`,
                 amount: parsedAmount * parsedPrice,
-                category: formData.category as any, // category da expedicao vs category do financeiro pode variar, casting aqui ou limitando opcoes
+                category: formData.category as any,
                 date: formData.purchaseDate,
                 status: 'Pago',
                 paymentDate: formData.purchaseDate,
@@ -155,7 +201,7 @@ export function ExpeditionFinanceiro() {
         }
 
         setIsModalOpen(false);
-        setFormData({ ...formData, description: '', amount: '1,00', unitPrice: '', isForDrinkersOnly: false });
+        setFormData({ ...formData, description: '', amount: '1,00', unitPrice: '', isForDrinkersOnly: false, drinkGroup: '' });
     };
 
     const handleEditClick = (trans: any) => {
@@ -165,6 +211,7 @@ export function ExpeditionFinanceiro() {
             amount: trans.amount ? trans.amount.toFixed(2).replace('.', ',') : '1,00',
             unitPrice: trans.unitPrice ? trans.unitPrice.toFixed(2).replace('.', ',') : '0,00',
             purchaseDate: trans.purchaseDate || new Date().toISOString().split('T')[0],
+            drinkGroup: trans.drinkGroup || '',
         });
         setEditModalOpen(true);
     };
@@ -178,6 +225,8 @@ export function ExpeditionFinanceiro() {
 
         if (isNaN(parsedAmount) || isNaN(parsedPrice)) return;
 
+        const drinkGroupValue = editFormData.drinkGroup || undefined;
+
         updateTransaction(itemToEdit.id, {
             description: editFormData.description,
             amount: parsedAmount,
@@ -187,12 +236,47 @@ export function ExpeditionFinanceiro() {
             purchasedBy: editFormData.purchasedBy,
             category: editFormData.category,
             isExpense: editFormData.isExpense,
-            isForDrinkersOnly: editFormData.isForDrinkersOnly
+            isForDrinkersOnly: !!drinkGroupValue,
+            drinkGroup: drinkGroupValue,
         });
 
         setEditModalOpen(false);
         setItemToEdit(null);
     };
+
+    // Helper para montar o select de grupos de bebida
+    const DrinkGroupSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+        <div className="space-y-1">
+            <label className="text-sm font-medium text-foreground flex items-center gap-1"><Beer size={14} className="text-amber-500" /> Rateio de Bebida</label>
+            <select
+                className="flex h-10 w-full rounded-radius border border-input bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={value}
+                onChange={e => onChange(e.target.value)}
+            >
+                <option value="">🌐 Geral (todos os participantes)</option>
+                {drinkGroups.length > 0 && (
+                    <>
+                        <option value="todos">🍺 Todos os Bebedores</option>
+                        <optgroup label="Grupo por Marca:">
+                            {drinkGroups.map(g => (
+                                <option key={g} value={g}>🍺 {g}</option>
+                            ))}
+                        </optgroup>
+                    </>
+                )}
+                {drinkGroups.length === 0 && (
+                    <option value="todos">🍺 Todos os Bebedores</option>
+                )}
+            </select>
+            {value && value !== '' && (
+                <p className="text-xs text-amber-600 mt-0.5">
+                    {value === 'todos'
+                        ? 'Será rateado entre todos que bebem.'
+                        : `Será rateado apenas entre quem bebe ${value}.`}
+                </p>
+            )}
+        </div>
+    );
 
     return (
         <div className="space-y-6">
@@ -201,33 +285,97 @@ export function ExpeditionFinanceiro() {
                 {canEdit && <Button onClick={() => setIsModalOpen(true)}>Lançar Gasto</Button>}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-stone-50 border p-4 rounded-radius">
+            {/* ============================================================
+                PAINEL DE RATEIO POR GRUPO DE CERVEJA
+                Exibe: Geral + por marca + aviso se nenhuma marca configurada
+            ============================================================ */}
+
+            {/* Aviso quando não há grupos configurados */}
+            {drinkGroups.length === 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-radius p-4 flex items-start gap-3">
+                    <Info size={18} className="text-blue-400 mt-0.5 shrink-0" />
+                    <div>
+                        <p className="text-sm font-medium text-blue-800">Rateio por marca de cerveja não configurado</p>
+                        <p className="text-xs text-blue-600 mt-0.5">
+                            Para ativar o rateio de bebidas por marca (ex: Brahma, Antarctica), vá em{' '}
+                            <Link to="../participantes" relative="path" className="font-semibold underline">Participantes</Link>{' '}
+                            e defina a marca de cerveja de cada pessoa.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
+
+                {/* Card 1 — Total Geral */}
+                <div className="bg-stone-50 border p-4 rounded-radius col-span-1 sm:col-span-2 xl:col-span-1">
                     <div className="flex items-center gap-2 text-stone-500 mb-1">
-                        <Receipt size={18} /> <span className="text-sm font-medium">Total Geral de Gastos</span>
+                        <Receipt size={18} />
+                        <span className="text-sm font-medium">Total Geral de Gastos</span>
                     </div>
                     <p className="text-2xl font-bold text-foreground">
                         R$ {totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
+                    <p className="text-xs text-stone-400 mt-1">{expeditionParticipants.length} participante(s)</p>
                 </div>
 
-                <div className="bg-stone-50 border p-4 rounded-radius">
-                    <div className="flex items-center gap-2 text-stone-500 mb-1">
-                        <UserMinus size={18} /> <span className="text-sm font-medium">Custo Geral p/ Pessoa</span>
+                {/* Card 2 — Custo Geral por pessoa (gastos divididos entre todos) */}
+                <div className="bg-white border-2 border-primary/20 p-4 rounded-radius">
+                    <div className="flex items-center gap-2 text-primary mb-1">
+                        <UserMinus size={18} />
+                        <span className="text-sm font-medium">Custo Geral / Pessoa</span>
                     </div>
                     <p className="text-2xl font-bold text-foreground">
                         R$ {splitCalculations.valPerPersonGeneral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
-                </div>
-
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-radius">
-                    <div className="flex items-center gap-2 text-amber-700 mb-1">
-                        <Beer size={18} /> <span className="text-sm font-medium">Extra p/ Bebedores</span>
-                    </div>
-                    <p className="text-2xl font-bold text-amber-900">
-                        + R$ {splitCalculations.valPerDrinker.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <p className="text-xs text-stone-400 mt-1">
+                        Total geral dos gastos comuns: R$ {splitCalculations.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                 </div>
+
+                {/* Card 3 — Extra para todos os bebedores (gastos sem marca específica) */}
+                {splitCalculations.totalTodosBebedores > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-radius">
+                        <div className="flex items-center gap-2 text-amber-700 mb-1">
+                            <Beer size={18} />
+                            <span className="text-sm font-medium">Extra p/ Todos os Bebedores</span>
+                        </div>
+                        <p className="text-2xl font-bold text-amber-900">
+                            + R$ {splitCalculations.valPerAllDrinkers.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-xs text-amber-600 mt-1">
+                            Total: R$ {splitCalculations.totalTodosBebedores.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                    </div>
+                )}
+
+                {/* Cards dinâmicos — um por marca de cerveja */}
+                {Object.entries(splitCalculations.groupTotals).map(([group, total]) => {
+                    const membersOfGroup = expeditionParticipants.filter(p => p.drinkGroup === group);
+                    const perPerson = splitCalculations.groupPerPerson[group] || 0;
+                    return (
+                        <div key={group} className="bg-amber-50 border-2 border-amber-300 p-4 rounded-radius">
+                            <div className="flex items-start justify-between mb-1">
+                                <div className="flex items-center gap-1.5 text-amber-800">
+                                    <Beer size={16} />
+                                    <span className="text-sm font-semibold">Custo p/ {group}</span>
+                                </div>
+                                <span className="text-xs bg-amber-200 text-amber-800 rounded-full px-2 py-0.5 font-medium">
+                                    {membersOfGroup.length} pessoa{membersOfGroup.length !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                            <p className="text-2xl font-bold text-amber-900">
+                                + R$ {perPerson.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                            <p className="text-xs text-amber-600 mt-1">Total: R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            {membersOfGroup.length > 0 && (
+                                <p className="text-[11px] text-amber-700 mt-1 truncate" title={membersOfGroup.map(m => m.name).join(', ')}>
+                                    {membersOfGroup.map(m => m.name.split(' ')[0]).join(', ')}
+                                </p>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Painel de Acerto de Contas */}
@@ -248,12 +396,21 @@ export function ExpeditionFinanceiro() {
                         <tbody className="divide-y">
                             {participantBalances.map(pb => (
                                 <tr key={pb.profile.id} className="hover:bg-stone-50/50 transition-colors">
-                                    <td className="px-4 py-3 font-medium text-foreground flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
-                                            {pb.profile.name.substring(0, 2).toUpperCase()}
+                                    <td className="px-4 py-3 font-medium text-foreground">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                {pb.profile.name.substring(0, 2).toUpperCase()}
+                                            </div>
+                                            <span>{pb.profile.name}</span>
+                                            {pb.profile.drinkGroup && (
+                                                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                    🍺 {pb.profile.drinkGroup}
+                                                </span>
+                                            )}
+                                            {!pb.profile.drinkGroup && pb.profile.drinksAlcohol && (
+                                                <Beer size={12} className="text-amber-500" title="Bebedor" />
+                                            )}
                                         </div>
-                                        {pb.profile.name}
-                                        {pb.profile.drinksAlcohol && <span title="Bebedor"><Beer size={12} className="text-amber-500 ml-1" /></span>}
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         R$ {pb.debt.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -296,7 +453,7 @@ export function ExpeditionFinanceiro() {
                         <tbody>
                             {transactions.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-8 text-center text-stone-500">
+                                    <td colSpan={7} className="px-4 py-8 text-center text-stone-500">
                                         Nenhum gasto registrado nesta expedição.
                                     </td>
                                 </tr>
@@ -326,9 +483,10 @@ export function ExpeditionFinanceiro() {
                                                     <span className="bg-stone-100 text-stone-600 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">
                                                         {trans.category}
                                                     </span>
-                                                    {trans.isForDrinkersOnly && (
-                                                        <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1" title="Rateio exclusivo para quem bebe">
-                                                            <Beer size={10} /> Bebedores
+                                                    {trans.drinkGroup && (
+                                                        <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1" title={`Rateio p/ grupo ${trans.drinkGroup}`}>
+                                                            <Beer size={10} />
+                                                            {trans.drinkGroup === 'todos' ? 'Bebedores' : trans.drinkGroup}
                                                         </span>
                                                     )}
                                                 </div>
@@ -376,6 +534,7 @@ export function ExpeditionFinanceiro() {
                 </div>
             </div>
 
+            {/* Modal de Novo Lançamento */}
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Lançar Transação">
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <Input
@@ -451,21 +610,10 @@ export function ExpeditionFinanceiro() {
                         </select>
                     </div>
 
-                    {formData.category !== 'Bebida Alcoólica' && (
-                        <div className="flex items-start gap-2 pt-2 border-t mt-2">
-                            <input
-                                type="checkbox"
-                                id="isForDrinkersOnly"
-                                className="mt-1 w-4 h-4 text-primary rounded border-stone-300 focus:ring-primary accent-primary"
-                                checked={formData.isForDrinkersOnly}
-                                onChange={e => setFormData({ ...formData, isForDrinkersOnly: e.target.checked })}
-                            />
-                            <label htmlFor="isForDrinkersOnly" className="text-sm text-stone-600 cursor-pointer">
-                                <span className="font-medium text-amber-700 flex items-center gap-1"><Beer size={14} /> Despesa exclusiva para Bebedores</span>
-                                <span className="block text-xs text-stone-500 mt-0.5">Marque isso se este item de mercado for ingredientes para drinks ou petiscos apenas de quem bebe álcool.</span>
-                            </label>
-                        </div>
-                    )}
+                    <DrinkGroupSelect
+                        value={formData.drinkGroup}
+                        onChange={v => setFormData({ ...formData, drinkGroup: v })}
+                    />
 
                     <div className="flex justify-between items-center bg-stone-50 border p-3 rounded-radius mt-2">
                         <span className="font-medium text-sm text-stone-600">Valor Final:</span>
@@ -483,6 +631,7 @@ export function ExpeditionFinanceiro() {
                 </form>
             </Modal>
 
+            {/* Modal de Edição */}
             <Modal isOpen={editModalOpen} onClose={() => setEditModalOpen(false)} title="Editar Transação">
                 <form onSubmit={handleEditSubmit} className="space-y-4">
                     <Input
@@ -558,20 +707,10 @@ export function ExpeditionFinanceiro() {
                         </select>
                     </div>
 
-                    {editFormData.category !== 'Bebida Alcoólica' && (
-                        <div className="flex items-start gap-2 pt-2 border-t mt-2">
-                            <input
-                                type="checkbox"
-                                id="editIsForDrinkersOnly"
-                                className="mt-1 w-4 h-4 text-primary rounded border-stone-300 focus:ring-primary accent-primary"
-                                checked={editFormData.isForDrinkersOnly}
-                                onChange={e => setEditFormData({ ...editFormData, isForDrinkersOnly: e.target.checked })}
-                            />
-                            <label htmlFor="editIsForDrinkersOnly" className="text-sm text-stone-600 cursor-pointer">
-                                <span className="font-medium text-amber-700 flex items-center gap-1"><Beer size={14} /> Despesa exclusiva para Bebedores</span>
-                            </label>
-                        </div>
-                    )}
+                    <DrinkGroupSelect
+                        value={editFormData.drinkGroup}
+                        onChange={v => setEditFormData({ ...editFormData, drinkGroup: v })}
+                    />
 
                     <div className="flex justify-between items-center bg-stone-50 border p-3 rounded-radius mt-2">
                         <span className="font-medium text-sm text-stone-600">Valor Final:</span>

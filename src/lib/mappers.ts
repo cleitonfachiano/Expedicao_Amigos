@@ -17,7 +17,8 @@ export const mapProfile = (db: any): Profile => ({
     type: db.type,
     phone: db.phone || '',
     email: db.email || '',
-    drinksAlcohol: db.drinks_alcohol,
+    drinksAlcohol: db.drinks_alcohol || (!!db.drink_group),
+    drinkGroup: db.drink_group || undefined,
     isActive: db.is_active,
 });
 
@@ -43,6 +44,7 @@ export const mapTransaction = (db: any): Transaction => ({
     category: db.category,
     isExpense: db.is_expense,
     isForDrinkersOnly: db.is_for_drinkers_only,
+    drinkGroup: db.drink_group || undefined,
     isPaid: db.is_paid,
 });
 
@@ -115,6 +117,7 @@ export const mapChecklistItem = (db: any): ChecklistItem => ({
     totalPrice: db.total_price ? Number(db.total_price) : undefined,
     transactionId: db.transaction_id || undefined,
     isChecked: db.is_checked,
+    drinkGroup: db.drink_group || undefined,
 });
 
 export const mapChecklistTemplate = (db: any): ChecklistTemplate => ({
@@ -145,7 +148,8 @@ export const unmapProfile = (app: Omit<Profile, 'id'> | Partial<Profile>): any =
     type: app.type,
     phone: app.phone,
     email: app.email,
-    drinks_alcohol: app.drinksAlcohol,
+    drinks_alcohol: app.drinkGroup ? true : app.drinksAlcohol,
+    drink_group: app.drinkGroup ?? null,
     is_active: app.isActive,
 });
 
@@ -168,6 +172,7 @@ export const unmapTransaction = (app: Omit<Transaction, 'id'> | Partial<Transact
     category: app.category,
     is_expense: app.isExpense,
     is_for_drinkers_only: app.isForDrinkersOnly,
+    drink_group: app.drinkGroup ?? null,
     is_paid: app.isPaid,
 });
 
@@ -233,6 +238,7 @@ export const unmapChecklistItem = (app: Omit<ChecklistItem, 'id'> | Partial<Chec
     total_price: app.totalPrice,
     transaction_id: app.transactionId,
     is_checked: app.isChecked,
+    drink_group: app.drinkGroup ?? null,
 });
 
 export const unmapChecklistTemplate = (app: Omit<ChecklistTemplate, 'id'> | Partial<ChecklistTemplate>): any => ({

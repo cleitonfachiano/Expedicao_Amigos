@@ -11,6 +11,7 @@ export type Profile = {
     phone: string;
     email?: string;
     drinksAlcohol: boolean;
+    drinkGroup?: string; // Nome do grupo/marca de cerveja (ex: 'Heineken'). Vazio = não bebe.
     isActive: boolean;
 };
 
@@ -51,7 +52,8 @@ export type Transaction = {
     purchasedBy: string;
     category: TransactionCategory;
     isExpense: boolean;
-    isForDrinkersOnly?: boolean;
+    isForDrinkersOnly?: boolean; // Mantido por retrocompatibilidade
+    drinkGroup?: string; // Grupo de bebida ao qual a despesa pertence (null = geral)
     isPaid?: boolean;
 };
 
@@ -132,6 +134,7 @@ export type ChecklistItem = {
     totalPrice?: number;
     transactionId?: string;
     isChecked: boolean;
+    drinkGroup?: string; // Marca/grupo de cerveja vinculada ao item (ex: 'Brahma', 'Antarctica')
 };
 
 export type ChecklistTemplate = {
