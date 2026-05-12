@@ -27,7 +27,6 @@ const makeFilename = (base: string, ext: string) =>
 
 const PRIMARY   = [41,  98, 255] as [number, number, number];
 const GREEN     = [22, 163,  74] as [number, number, number];
-const GRAY_HEAD = [55,  65,  81] as [number, number, number];
 const GRAY_ROW  = [248, 250, 252] as [number, number, number];
 const GRAY_FOOT = [229, 231, 235] as [number, number, number];
 
