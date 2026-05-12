@@ -4,14 +4,21 @@ import { useStore, type Expedition, type TransactionCategory } from '../../store
 import { Input, Button } from '../../components/ui/forms';
 import { Modal } from '../../components/ui/Modal';
 import { format, parseISO } from 'date-fns';
-import { Receipt, UserMinus, Beer, CheckSquare, Square, Trash2, Pencil, Info } from 'lucide-react';
-
+import { Receipt, UserMinus, Beer, CheckSquare, Square, Trash2, Pencil, Info, FileDown, FileText, FileSpreadsheet, BarChart2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import {
+    exportPainelFinanceiroPdf,
+    exportPainelFinanceiroXlsx,
+    type ParticipantBalance,
+    type SplitCalc
+} from '../../lib/reports';
 
 export function ExpeditionFinanceiro() {
     const categories = useStore(state => state.transactionCategories);
     const { expedition } = useOutletContext<{ expedition: Expedition }>();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [reportGenerating, setReportGenerating] = useState(false);
 
     const allTransactions = useStore(state => state.transactions);
     const transactions = useMemo(() => allTransactions.filter(t => t.expeditionId === expedition.id), [allTransactions, expedition.id]);
@@ -282,7 +289,12 @@ export function ExpeditionFinanceiro() {
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold tracking-tight">Painel Financeiro</h2>
-                {canEdit && <Button onClick={() => setIsModalOpen(true)}>Lançar Gasto</Button>}
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setReportModalOpen(true)} className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50">
+                        <FileDown size={16} /> Exportar
+                    </Button>
+                    {canEdit && <Button onClick={() => setIsModalOpen(true)}>Lançar Gasto</Button>}
+                </div>
             </div>
 
             {/* ============================================================
@@ -728,6 +740,79 @@ export function ExpeditionFinanceiro() {
                         <Button type="submit">Salvar Alterações</Button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* ===== MODAL DE EXPORTAÇÃO ===== */}
+            <Modal isOpen={reportModalOpen} onClose={() => setReportModalOpen(false)} title="Exportar Relatório Financeiro">
+                <div className="space-y-5">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                            <BarChart2 size={18} className="text-emerald-600 mt-0.5 shrink-0" />
+                            <div>
+                                <p className="text-sm font-semibold text-emerald-800">Painel Financeiro Completo</p>
+                                <p className="text-xs text-emerald-700 mt-0.5">
+                                    O relatório incluirá: resumo do rateio, gastos por categoria,
+                                    acerto de contas por participante e extrato completo de gastos.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <p className="text-sm font-semibold text-stone-700">Escolha o Formato</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                disabled={reportGenerating}
+                                onClick={async () => {
+                                    setReportGenerating(true);
+                                    try {
+                                        exportPainelFinanceiroPdf(
+                                            allTransactions,
+                                            expeditionParticipants,
+                                            expedition,
+                                            splitCalculations as SplitCalc,
+                                            participantBalances as ParticipantBalance[]
+                                        );
+                                    } finally {
+                                        setReportGenerating(false);
+                                        setReportModalOpen(false);
+                                    }
+                                }}
+                                className="flex items-center justify-center gap-2 py-4 px-4 rounded-lg bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 transition-colors font-semibold disabled:opacity-50"
+                            >
+                                <FileText size={22} />
+                                <span>{reportGenerating ? 'Gerando...' : 'Baixar PDF'}</span>
+                            </button>
+
+                            <button
+                                disabled={reportGenerating}
+                                onClick={async () => {
+                                    setReportGenerating(true);
+                                    try {
+                                        exportPainelFinanceiroXlsx(
+                                            allTransactions,
+                                            expeditionParticipants,
+                                            expedition,
+                                            splitCalculations as SplitCalc,
+                                            participantBalances as ParticipantBalance[]
+                                        );
+                                    } finally {
+                                        setReportGenerating(false);
+                                        setReportModalOpen(false);
+                                    }
+                                }}
+                                className="flex items-center justify-center gap-2 py-4 px-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors font-semibold disabled:opacity-50"
+                            >
+                                <FileSpreadsheet size={22} />
+                                <span>{reportGenerating ? 'Gerando...' : 'Baixar XLSX'}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <p className="text-xs text-stone-400 text-center">
+                        O arquivo será baixado automaticamente pelo navegador.
+                    </p>
+                </div>
             </Modal>
         </div>
     );

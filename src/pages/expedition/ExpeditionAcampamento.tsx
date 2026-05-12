@@ -4,10 +4,15 @@ import { useStore, type Expedition } from '../../store/useStore';
 import { Input, Button } from '../../components/ui/forms';
 import {
     ShoppingCart, Tent, CheckSquare, Square, Trash2, Wand2, DollarSign,
-    Pencil, Save, Search, ArrowUpAZ, ArrowDownAZ, Beer, Zap
+    Pencil, Save, Search, ArrowUpAZ, ArrowDownAZ, Beer, Zap, FileDown,
+    FileText, FileSpreadsheet, ShoppingBag, BarChart2
 } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import { v4 as uuidv4 } from 'uuid';
+import {
+    exportListToPdf, exportListToXlsx,
+    exportFinancialToPdf, exportFinancialToXlsx
+} from '../../lib/reports';
 
 export function ExpeditionAcampamento() {
     const { expedition } = useOutletContext<{ expedition: Expedition }>();
@@ -25,6 +30,7 @@ export function ExpeditionAcampamento() {
     const addFinancialTransaction = useStore(state => state.addFinancialTransaction);
     const saveCurrentAsTemplates = useStore(state => state.saveCurrentAsTemplates);
     const profiles = useStore(state => state.profiles);
+    const allTransactions = useStore(state => state.transactions);
 
     const currentUser = useStore(state => state.currentUser);
     const canEdit = currentUser?.role !== 'User';
@@ -36,6 +42,7 @@ export function ExpeditionAcampamento() {
     const [newItemQtd, setNewItemQtd] = useState('');
     const [newItemUnit, setNewItemUnit] = useState('UN');
     const [newItemPrice, setNewItemPrice] = useState('');
+    const [newItemTotal, setNewItemTotal] = useState('');
     const [newItemDrinkGroup, setNewItemDrinkGroup] = useState('');
     const [drinkGroupHint, setDrinkGroupHint] = useState('');
 
@@ -49,6 +56,11 @@ export function ExpeditionAcampamento() {
     const [payerId, setPayerId] = useState('');
     const [launchDrinkGroup, setLaunchDrinkGroup] = useState('');
 
+    // Modal de exportação de relatórios
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [reportType, setReportType] = useState<'lista' | 'financeiro'>('lista');
+    const [reportGenerating, setReportGenerating] = useState(false);
+
     // Modal de edição
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [itemToEdit, setItemToEdit] = useState<any>(null);
@@ -56,6 +68,7 @@ export function ExpeditionAcampamento() {
     const [editItemQtd, setEditItemQtd] = useState('');
     const [editItemUnit, setEditItemUnit] = useState('UN');
     const [editItemPrice, setEditItemPrice] = useState('');
+    const [editItemTotal, setEditItemTotal] = useState('');
     const [editItemDrinkGroup, setEditItemDrinkGroup] = useState('');
 
     // Participantes e grupos de cerveja
@@ -105,13 +118,68 @@ export function ExpeditionAcampamento() {
         return map;
     }, [checklistItems, drinkGroups]);
 
+    // Parse robusto de números no formato pt-BR (ex: "1.200,577" → 1200.577)
+    const parsePtBR = (val: string): number => {
+        // Remove separadores de milhar (pontos) e troca vírgula decimal por ponto
+        const clean = val.replace(/\./g, '').replace(',', '.');
+        return parseFloat(clean);
+    };
+
+    // Handlers bidirecionais P. Unit. ↔ Total (novo item)
+    const handleNewPriceChange = (val: string) => {
+        setNewItemPrice(val);
+        const qtd = parsePtBR(newItemQtd);
+        const price = parsePtBR(val);
+        if (!isNaN(qtd) && !isNaN(price) && qtd > 0) {
+            setNewItemTotal((qtd * price).toFixed(2).replace('.', ','));
+        } else {
+            setNewItemTotal('');
+        }
+    };
+
+    const handleNewTotalChange = (val: string) => {
+        setNewItemTotal(val);
+        const qtd = parsePtBR(newItemQtd);
+        const total = parsePtBR(val);
+        if (!isNaN(qtd) && !isNaN(total) && qtd > 0) {
+            setNewItemPrice((total / qtd).toFixed(2).replace('.', ','));
+        } else {
+            setNewItemPrice('');
+        }
+    };
+
+    // Handlers bidirecionais P. Unit. ↔ Total (edição)
+    const handleEditPriceChange = (val: string) => {
+        setEditItemPrice(val);
+        const qtd = parsePtBR(editItemQtd);
+        const price = parsePtBR(val);
+        if (!isNaN(qtd) && !isNaN(price) && qtd > 0) {
+            setEditItemTotal((qtd * price).toFixed(2).replace('.', ','));
+        } else {
+            setEditItemTotal('');
+        }
+    };
+
+    const handleEditTotalChange = (val: string) => {
+        setEditItemTotal(val);
+        const qtd = parsePtBR(editItemQtd);
+        const total = parsePtBR(val);
+        if (!isNaN(qtd) && !isNaN(total) && qtd > 0) {
+            setEditItemPrice((total / qtd).toFixed(2).replace('.', ','));
+        } else {
+            setEditItemPrice('');
+        }
+    };
+
     const handleAddItem = (e: React.FormEvent) => {
         e.preventDefault();
         if (!newItemName) return;
 
-        const qtd = newItemQtd ? Number(newItemQtd.replace(',', '.')) : undefined;
-        const price = newItemPrice ? Number(newItemPrice.replace(',', '.')) : undefined;
-        const total = (qtd && price) ? qtd * price : undefined;
+        const qtd = newItemQtd ? parsePtBR(newItemQtd) : undefined;
+        const price = newItemPrice ? parsePtBR(newItemPrice) : undefined;
+        const total = newItemTotal
+            ? parsePtBR(newItemTotal)
+            : (qtd && price) ? qtd * price : undefined;
         const detectedGroup = newItemDrinkGroup || autoDetect(newItemName);
 
         addChecklistItem({
@@ -129,6 +197,7 @@ export function ExpeditionAcampamento() {
         setNewItemName('');
         setNewItemQtd('');
         setNewItemPrice('');
+        setNewItemTotal('');
         setNewItemUnit('UN');
         setNewItemDrinkGroup('');
         setDrinkGroupHint('');
@@ -219,9 +288,10 @@ export function ExpeditionAcampamento() {
     const handleEditClick = (item: any) => {
         setItemToEdit(item);
         setEditItemName(item.name);
-        setEditItemQtd(item.quantity ? Number(item.quantity).toFixed(2).replace('.', ',') : '');
+        setEditItemQtd(item.quantity ? Number(item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 }) : '');
         setEditItemUnit(item.unit || 'UN');
         setEditItemPrice(item.unitPrice ? Number(item.unitPrice).toFixed(2).replace('.', ',') : '');
+        setEditItemTotal(item.totalPrice ? Number(item.totalPrice).toFixed(2).replace('.', ',') : '');
         setEditItemDrinkGroup(item.drinkGroup || autoDetect(item.name));
         setEditModalOpen(true);
     };
@@ -230,9 +300,11 @@ export function ExpeditionAcampamento() {
         e.preventDefault();
         if (!itemToEdit || !editItemName) return;
 
-        const qtd = editItemQtd ? Number(editItemQtd.replace(',', '.')) : undefined;
-        const price = editItemPrice ? Number(editItemPrice.replace(',', '.')) : undefined;
-        const total = (qtd && price) ? qtd * price : undefined;
+        const qtd = editItemQtd ? parsePtBR(editItemQtd) : undefined;
+        const price = editItemPrice ? parsePtBR(editItemPrice) : undefined;
+        const total = editItemTotal
+            ? parsePtBR(editItemTotal)
+            : (qtd && price) ? qtd * price : undefined;
 
         updateChecklistItem(itemToEdit.id, {
             name: editItemName,
@@ -343,7 +415,7 @@ export function ExpeditionAcampamento() {
                         </p>
                     </div>
                     {canEdit && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                             <Button variant="outline" size="sm" onClick={() => {
                                 if (confirm('Salvar os itens atuais como lista base para futuras expedições? Isso substituirá a lista base anterior.')) {
                                     saveCurrentAsTemplates(expedition.id);
@@ -354,6 +426,9 @@ export function ExpeditionAcampamento() {
                             </Button>
                             <Button variant="outline" size="sm" onClick={handleAutoGenerate} className="gap-2">
                                 <Wand2 size={16} /> Gerar Sugestão
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setReportModalOpen(true)} className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50">
+                                <FileDown size={16} /> Exportar
                             </Button>
                         </div>
                     )}
@@ -385,8 +460,14 @@ export function ExpeditionAcampamento() {
                                             value={newItemQtd}
                                             onChange={e => setNewItemQtd(e.target.value.replace(/[^0-9.,]/g, ''))}
                                             onBlur={e => {
-                                                const n = parseFloat(e.target.value.replace(',', '.'));
-                                                if (!isNaN(n)) setNewItemQtd(n.toFixed(2).replace('.', ','));
+                                                const n = parsePtBR(e.target.value);
+                                                if (!isNaN(n)) {
+                                                    setNewItemQtd(n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 }));
+                                                    const price = parsePtBR(newItemPrice);
+                                                    const tot = parsePtBR(newItemTotal);
+                                                    if (!isNaN(tot) && tot > 0) setNewItemPrice((tot / n).toFixed(2).replace('.', ','));
+                                                    else if (!isNaN(price) && price > 0) setNewItemTotal((n * price).toFixed(2).replace('.', ','));
+                                                }
                                             }}
                                         />
                                     </div>
@@ -407,13 +488,28 @@ export function ExpeditionAcampamento() {
                                     </div>
                                     <div className="w-24">
                                         <Input
-                                            label="P. Unit."
+                                            label="P. Unit. (R$)"
                                             type="text"
                                             value={newItemPrice}
-                                            onChange={e => setNewItemPrice(e.target.value.replace(/[^0-9.,]/g, ''))}
+                                            onChange={e => handleNewPriceChange(e.target.value.replace(/[^0-9.,]/g, ''))}
                                             onBlur={e => {
                                                 const n = parseFloat(e.target.value.replace(',', '.'));
-                                                if (!isNaN(n)) setNewItemPrice(n.toFixed(2).replace('.', ','));
+                                                if (!isNaN(n)) handleNewPriceChange(n.toFixed(2).replace('.', ','));
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="flex items-end pb-2.5 shrink-0 text-stone-400 select-none" title="Calculado automaticamente">
+                                        <span className="text-base leading-none">⟷</span>
+                                    </div>
+                                    <div className="w-28">
+                                        <Input
+                                            label="Total (R$)"
+                                            type="text"
+                                            value={newItemTotal}
+                                            onChange={e => handleNewTotalChange(e.target.value.replace(/[^0-9.,]/g, ''))}
+                                            onBlur={e => {
+                                                const n = parseFloat(e.target.value.replace(',', '.'));
+                                                if (!isNaN(n)) handleNewTotalChange(n.toFixed(2).replace('.', ','));
                                             }}
                                         />
                                     </div>
@@ -527,7 +623,7 @@ export function ExpeditionAcampamento() {
 
                                             <div className="flex flex-row flex-wrap items-center gap-3 md:gap-0 mt-2 md:mt-0 text-sm">
                                                 <div className="md:w-24 md:text-center text-stone-600">
-                                                    {item.quantity ? `${Number(item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${item.unit || ''}` : '-'}
+                                                    {item.quantity ? `${Number(item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${item.unit || ''}` : '-'}
                                                 </div>
                                                 <div className="md:w-24 md:text-right text-stone-500">
                                                     {item.unitPrice
@@ -677,8 +773,8 @@ export function ExpeditionAcampamento() {
                                     value={editItemQtd}
                                     onChange={e => setEditItemQtd(e.target.value.replace(/[^0-9.,]/g, ''))}
                                     onBlur={e => {
-                                        const n = parseFloat(e.target.value.replace(',', '.'));
-                                        if (!isNaN(n)) setEditItemQtd(n.toFixed(2).replace('.', ','));
+                                        const n = parsePtBR(e.target.value);
+                                        if (!isNaN(n)) setEditItemQtd(n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 }));
                                     }}
                                 />
                             </div>
@@ -699,16 +795,31 @@ export function ExpeditionAcampamento() {
                             </div>
                             <div className="flex-1">
                                 <Input
-                                    label="Preço Un."
+                                    label="Preço Un. (R$)"
                                     type="text"
                                     value={editItemPrice}
-                                    onChange={e => setEditItemPrice(e.target.value.replace(/[^0-9.,]/g, ''))}
+                                    onChange={e => handleEditPriceChange(e.target.value.replace(/[^0-9.,]/g, ''))}
                                     onBlur={e => {
                                         const n = parseFloat(e.target.value.replace(',', '.'));
-                                        if (!isNaN(n)) setEditItemPrice(n.toFixed(2).replace('.', ','));
+                                        if (!isNaN(n)) handleEditPriceChange(n.toFixed(2).replace('.', ','));
                                     }}
                                 />
                             </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 text-stone-400 text-xs font-medium pt-1">⟷ Total calculado automaticamente</div>
+                        </div>
+                        <div>
+                            <Input
+                                label="Total (R$)"
+                                type="text"
+                                value={editItemTotal}
+                                onChange={e => handleEditTotalChange(e.target.value.replace(/[^0-9.,]/g, ''))}
+                                onBlur={e => {
+                                    const n = parseFloat(e.target.value.replace(',', '.'));
+                                    if (!isNaN(n)) handleEditTotalChange(n.toFixed(2).replace('.', ','));
+                                }}
+                            />
                         </div>
 
                         {/* Grupo de cerveja no edit */}
@@ -732,6 +843,103 @@ export function ExpeditionAcampamento() {
                         </div>
                     </form>
                 )}
+            </Modal>
+
+            {/* ===== MODAL DE EXPORTAÇÃO DE RELATÓRIOS ===== */}
+            <Modal isOpen={reportModalOpen} onClose={() => setReportModalOpen(false)} title="Exportar Relatório">
+                <div className="space-y-5">
+                    {/* Tipo de relatório */}
+                    <div className="space-y-2">
+                        <p className="text-sm font-semibold text-stone-700">Tipo de Relatório</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button
+                                onClick={() => setReportType('lista')}
+                                className={`flex flex-col items-start gap-1.5 p-4 rounded-lg border-2 transition-all text-left ${
+                                    reportType === 'lista'
+                                        ? 'border-primary bg-primary/5'
+                                        : 'border-stone-200 hover:border-stone-300'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <ShoppingBag size={18} className={reportType === 'lista' ? 'text-primary' : 'text-stone-400'} />
+                                    <span className="font-semibold text-sm">Lista de Itens</span>
+                                </div>
+                                <p className="text-xs text-stone-500 leading-relaxed">
+                                    Exporta a aba atual ({activeTab}) com produtos, quantidades, preços e status.
+                                </p>
+                            </button>
+
+                            <button
+                                onClick={() => setReportType('financeiro')}
+                                className={`flex flex-col items-start gap-1.5 p-4 rounded-lg border-2 transition-all text-left ${
+                                    reportType === 'financeiro'
+                                        ? 'border-emerald-500 bg-emerald-50'
+                                        : 'border-stone-200 hover:border-stone-300'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <BarChart2 size={18} className={reportType === 'financeiro' ? 'text-emerald-600' : 'text-stone-400'} />
+                                    <span className="font-semibold text-sm">Resumo Financeiro</span>
+                                </div>
+                                <p className="text-xs text-stone-500 leading-relaxed">
+                                    Todas as listas + detalhes de lançamentos, gastos por participante e por categoria.
+                                </p>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Formato */}
+                    <div className="space-y-2">
+                        <p className="text-sm font-semibold text-stone-700">Formato de Exportação</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                disabled={reportGenerating}
+                                onClick={async () => {
+                                    setReportGenerating(true);
+                                    try {
+                                        if (reportType === 'lista') {
+                                            exportListToPdf(checklistItems, expedition, activeTab);
+                                        } else {
+                                            exportFinancialToPdf(checklistItems, allTransactions, expeditionParticipants, expedition);
+                                        }
+                                    } finally {
+                                        setReportGenerating(false);
+                                        setReportModalOpen(false);
+                                    }
+                                }}
+                                className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 transition-colors font-semibold text-sm disabled:opacity-50"
+                            >
+                                <FileText size={20} />
+                                {reportGenerating ? 'Gerando...' : 'Baixar PDF'}
+                            </button>
+
+                            <button
+                                disabled={reportGenerating}
+                                onClick={async () => {
+                                    setReportGenerating(true);
+                                    try {
+                                        if (reportType === 'lista') {
+                                            exportListToXlsx(checklistItems, expedition, activeTab);
+                                        } else {
+                                            exportFinancialToXlsx(checklistItems, allTransactions, expeditionParticipants, expedition);
+                                        }
+                                    } finally {
+                                        setReportGenerating(false);
+                                        setReportModalOpen(false);
+                                    }
+                                }}
+                                className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors font-semibold text-sm disabled:opacity-50"
+                            >
+                                <FileSpreadsheet size={20} />
+                                {reportGenerating ? 'Gerando...' : 'Baixar XLSX'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <p className="text-xs text-stone-400 text-center">
+                        O arquivo será baixado automaticamente pelo navegador.
+                    </p>
+                </div>
             </Modal>
         </div>
     );
